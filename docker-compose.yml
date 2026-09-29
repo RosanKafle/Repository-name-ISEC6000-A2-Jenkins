@@ -1,0 +1,80 @@
+services:
+
+  # Docker-in-Docker daemon used by Jenkins to build application images.
+  docker:
+    image: docker:26-dind
+    container_name: jenkins-docker
+    privileged: true
+    restart: unless-stopped
+
+    environment:
+      # Enables TLS between Jenkins and the Docker daemon.
+      DOCKER_TLS_CERTDIR: /certs
+
+    volumes:
+      # Shares Docker client TLS certificates with Jenkins.
+      - jenkins-docker-certs:/certs/client
+
+      # Persists Docker images and build layers.
+      - jenkins-docker-data:/var/lib/docker
+
+    networks:
+      jenkins-network:
+        aliases:
+          - docker
+
+
+  # Jenkins controller for the CI/CD pipeline.
+  jenkins:
+    build:
+      context: .
+      dockerfile: Dockerfile.jenkins
+
+    container_name: jenkins-controller
+    restart: unless-stopped
+
+    # Jenkins runs as the scoped non-root Jenkins user.
+    user: "1000:1000"
+
+    environment:
+      # Jenkins communicates securely with the DinD service.
+      DOCKER_HOST: tcp://docker:2376
+      DOCKER_CERT_PATH: /certs/client
+      DOCKER_TLS_VERIFY: "1"
+
+    ports:
+      # Jenkins is restricted to localhost.
+      # Access will be through SSH port forwarding.
+      - "127.0.0.1:8080:8080"
+
+    volumes:
+      # Persistent Jenkins jobs, plugins and configuration.
+      - jenkins-data:/var/jenkins_home
+
+      # Read-only Docker TLS client certificates.
+      - jenkins-docker-certs:/certs/client:ro
+
+    depends_on:
+      - docker
+
+    networks:
+      - jenkins-network
+
+
+volumes:
+
+  # Jenkins persistent data.
+  jenkins-data:
+
+  # TLS certificates shared between Jenkins and DinD.
+  jenkins-docker-certs:
+
+  # Docker images and build artefacts.
+  jenkins-docker-data:
+
+
+networks:
+
+  # Private bridge network for Jenkins and DinD communication.
+  jenkins-network:
+    driver: bridge
