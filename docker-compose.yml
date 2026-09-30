@@ -14,6 +14,7 @@ services:
     volumes:
       # Shares Docker client TLS certificates with Jenkins.
       - jenkins-docker-certs:/certs/client
+      - jenkins-workspace:/var/jenkins_home/workspace
 
       # Persists Docker images and build layers.
       - jenkins-docker-data:/var/lib/docker
@@ -50,7 +51,7 @@ services:
     volumes:
       # Persistent Jenkins jobs, plugins and configuration.
       - jenkins-data:/var/jenkins_home
-
+      - jenkins-workspace:/var/jenkins_home/workspace
       # Read-only Docker TLS client certificates.
       - jenkins-docker-certs:/certs/client:ro
 
@@ -72,7 +73,7 @@ volumes:
   # Docker images and build artefacts.
   jenkins-docker-data:
 
-
+  jenkins-workspace:
 networks:
 
   # Private bridge network for Jenkins and DinD communication.
